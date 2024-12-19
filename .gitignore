@@ -1,0 +1,62 @@
+# Binaries for programs and tests
+*.exe
+*.exe.*
+*.dll
+*.so
+*.dylib
+
+# Test output
+*.out
+
+# Intermediate files
+*.lo
+*.la
+*.o
+*.obj
+
+# Generated Rust files
+*.rlib
+*.rmeta
+
+# Cargo specific files
+/target/
+/Cargo.lock
+
+# IDEs and editors
+# JetBrains IDEs (e.g., CLion, IntelliJ)
+.idea/
+/*.iml
+# Visual Studio Code
+.vscode/
+/*.code-workspace
+# Vim/Neovim swap files
+*.swp
+*.swo
+# Emacs
+*~
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.old
+*.orig
+*.rej
+
+# Coverage files
+/coverage/
+
+# Debugging files
+*.profraw

@@ -1,0 +1,25 @@
+---
+source: src/lex.rs
+description: "(){};,+-*!===<=>=!=<>/.\n\n// expect: LEFT_PAREN ( null\n// expect: RIGHT_PAREN ) null\n// expect: LEFT_BRACE { null\n// expect: RIGHT_BRACE } null\n// expect: SEMICOLON ; null\n// expect: COMMA , null\n// expect: PLUS + null\n// expect: MINUS - null\n// expect: STAR * null\n// expect: BANG_EQUAL != null\n// expect: EQUAL_EQUAL == null\n// expect: LESS_EQUAL <= null\n// expect: GREATER_EQUAL >= null\n// expect: BANG_EQUAL != null\n// expect: LESS < null\n// expect: GREATER > null\n// expect: SLASH / null\n// expect: DOT . null\n// expect: EOF  null\n"
+input_file: lox/scanning/punctuators.lox
+---
+[
+    LEFT_PAREN ( null,
+    RIGHT_PAREN ) null,
+    LEFT_PAREN { null,
+    RIGHT_BRACE } null,
+    SEMICOLON ; null,
+    COMMA , null,
+    PLUS + null,
+    MINUS - null,
+    STAR * null,
+    BANG_EQUAL != null,
+    EQUAL_EQUAL == null,
+    LESS_EQUAL <= null,
+    GREATER_EQAUL >= null,
+    BANG_EQUAL != null,
+    LESS < null,
+    GREATER > null,
+    SLASH / null,
+    DOT . null,
+]

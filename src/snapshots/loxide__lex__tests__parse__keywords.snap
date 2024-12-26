@@ -1,0 +1,22 @@
+---
+source: src/lex.rs
+description: "and class else false for fun if nil or return super this true var while\n\n// expect: AND and null\n// expect: CLASS class null\n// expect: ELSE else null\n// expect: FALSE false null\n// expect: FOR for null\n// expect: FUN fun null\n// expect: IF if null\n// expect: NIL nil null\n// expect: OR or null\n// expect: RETURN return null\n// expect: SUPER super null\n// expect: THIS this null\n// expect: TRUE true null\n// expect: VAR var null\n// expect: WHILE while null\n// expect: EOF  null\n"
+input_file: lox/scanning/keywords.lox
+---
+[
+    AND and null,
+    CLASS class null,
+    ELSE else null,
+    FALSE false null,
+    FOR for null,
+    FUN fun null,
+    IF if null,
+    NIL nil null,
+    OR or null,
+    RETURN return null,
+    SUPER super null,
+    THIS this null,
+    TRUE true null,
+    VAR var null,
+    WHILE while null,
+]

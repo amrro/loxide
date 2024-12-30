@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt::{self},
+    fmt::{self, Formatter},
 };
 
 use miette::LabeledSpan;
@@ -8,48 +8,51 @@ use once_cell::sync::Lazy;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenKind {
-    // Single-character tokens.
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
+    OpenParen,
+    CloseParen,
+    OpenBrace,
+    CloseBrace,
     Comma,
     Dot,
+
     Minus,
     Plus,
-    Semicolon,
+    /// `;`
+    Semi,
     Slash,
     Star,
+
     // One or two character tokens.
     Bang,
-    BangEqual,
-    Equal,
-    EqualEqual,
+    BangEq,
+    /// `=`
+    Eq,
+    EqEq,
     Greater,
-    GreaterEqual,
+    GreaterEq,
     Less,
-    LessEqual,
+    LessEq,
     // Literals.
     Identifier,
     Number(f64),
     String,
     // Keywords.
     And,
+    Or,
     Class,
+    If,
     Else,
-    False,
     Fun,
     For,
-    If,
+    While,
     Nil,
-    Or,
     Print,
     Return,
     Super,
     This,
     True,
+    False,
     Var,
-    While,
     EOF,
 }
 
@@ -93,29 +96,35 @@ impl Token<'_> {
     }
 }
 
+impl fmt::Display for Token<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.lexeme)
+    }
+}
+
 impl fmt::Debug for Token<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let lexeme = self.lexeme;
         match self.kind {
-            TokenKind::LeftParen => write!(f, "LEFT_PAREN {lexeme} null"),
-            TokenKind::RightParen => write!(f, "RIGHT_PAREN {lexeme} null"),
-            TokenKind::LeftBrace => write!(f, "LEFT_BRACE {lexeme} null"),
-            TokenKind::RightBrace => write!(f, "RIGHT_BRACE {lexeme} null"),
+            TokenKind::OpenParen => write!(f, "LEFT_PAREN {lexeme} null"),
+            TokenKind::CloseParen => write!(f, "RIGHT_PAREN {lexeme} null"),
+            TokenKind::OpenBrace => write!(f, "LEFT_BRACE {lexeme} null"),
+            TokenKind::CloseBrace => write!(f, "RIGHT_BRACE {lexeme} null"),
             TokenKind::Comma => write!(f, "COMMA {lexeme} null"),
             TokenKind::Dot => write!(f, "DOT {lexeme} null"),
             TokenKind::Minus => write!(f, "MINUS {lexeme} null"),
             TokenKind::Plus => write!(f, "PLUS {lexeme} null"),
-            TokenKind::Semicolon => write!(f, "SEMICOLON {lexeme} null"),
+            TokenKind::Semi => write!(f, "SEMICOLON {lexeme} null"),
             TokenKind::Slash => write!(f, "SLASH {lexeme} null"),
             TokenKind::Star => write!(f, "STAR {lexeme} null"),
             TokenKind::Bang => write!(f, "BANG {lexeme} null"),
-            TokenKind::BangEqual => write!(f, "BANG_EQUAL {lexeme} null"),
-            TokenKind::Equal => write!(f, "EQUAL {lexeme} null"),
-            TokenKind::EqualEqual => write!(f, "EQUAL_EQUAL {lexeme} null"),
+            TokenKind::BangEq => write!(f, "BANG_EQUAL {lexeme} null"),
+            TokenKind::Eq => write!(f, "EQUAL {lexeme} null"),
+            TokenKind::EqEq => write!(f, "EQUAL_EQUAL {lexeme} null"),
             TokenKind::Greater => write!(f, "GREATER {lexeme} null"),
-            TokenKind::GreaterEqual => write!(f, "GREATER_EQAUL {lexeme} null"),
+            TokenKind::GreaterEq => write!(f, "GREATER_EQAUL {lexeme} null"),
             TokenKind::Less => write!(f, "LESS {lexeme} null"),
-            TokenKind::LessEqual => write!(f, "LESS_EQUAL {lexeme} null"),
+            TokenKind::LessEq => write!(f, "LESS_EQUAL {lexeme} null"),
             TokenKind::Identifier => write!(f, "IDENTIEIFIER {lexeme} null"),
             TokenKind::Number(n) => write!(f, "NUMBER {n} {lexeme}"),
             TokenKind::String => write!(f, "STRING {lexeme} {}", Token::trim_quotes(lexeme)),
@@ -276,24 +285,20 @@ impl<'a> Iterator for Scanner<'a> {
                     self.offset += bytes;
                     continue;
                 }
-                '(' => return Some(Ok(self.tokenize(TokenKind::LeftParen, bytes))),
-                ')' => return Some(Ok(self.tokenize(TokenKind::RightParen, bytes))),
-                '{' => return Some(Ok(self.tokenize(TokenKind::LeftParen, bytes))),
-                '}' => return Some(Ok(self.tokenize(TokenKind::RightBrace, bytes))),
+                '(' => return Some(Ok(self.tokenize(TokenKind::OpenParen, bytes))),
+                ')' => return Some(Ok(self.tokenize(TokenKind::CloseParen, bytes))),
+                '{' => return Some(Ok(self.tokenize(TokenKind::OpenParen, bytes))),
+                '}' => return Some(Ok(self.tokenize(TokenKind::CloseBrace, bytes))),
                 ',' => return Some(Ok(self.tokenize(TokenKind::Comma, bytes))),
                 '.' => return Some(Ok(self.tokenize(TokenKind::Dot, bytes))),
                 '-' => return Some(Ok(self.tokenize(TokenKind::Minus, bytes))),
                 '+' => return Some(Ok(self.tokenize(TokenKind::Plus, bytes))),
-                ';' => return Some(Ok(self.tokenize(TokenKind::Semicolon, bytes))),
+                ';' => return Some(Ok(self.tokenize(TokenKind::Semi, bytes))),
                 '*' => return Some(Ok(self.tokenize(TokenKind::Star, bytes))),
-                '<' => return Some(Ok(self.if_equal(TokenKind::LessEqual, TokenKind::Less))),
-                '>' => {
-                    return Some(Ok(
-                        self.if_equal(TokenKind::GreaterEqual, TokenKind::Greater)
-                    ))
-                }
-                '=' => return Some(Ok(self.if_equal(TokenKind::EqualEqual, TokenKind::Equal))),
-                '!' => return Some(Ok(self.if_equal(TokenKind::BangEqual, TokenKind::Bang))),
+                '<' => return Some(Ok(self.if_equal(TokenKind::LessEq, TokenKind::Less))),
+                '>' => return Some(Ok(self.if_equal(TokenKind::GreaterEq, TokenKind::Greater))),
+                '=' => return Some(Ok(self.if_equal(TokenKind::EqEq, TokenKind::Eq))),
+                '!' => return Some(Ok(self.if_equal(TokenKind::BangEq, TokenKind::Bang))),
                 '"' => return Some(Ok(self.string())),
                 '/' => {
                     if let Some(token) = self.slash_or_comment() {

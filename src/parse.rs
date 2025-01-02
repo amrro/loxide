@@ -91,14 +91,14 @@ impl fmt::Display for Expr<'_> {
 
 struct Parser<'a, I>
 where
-    I: Iterator<Item = &'a Token<'a>>,
+    I: Iterator<Item = &'a Token>,
 {
     cursor: TokenCursor<'a, I>,
 }
 
 impl<'a, I> Parser<'a, I>
 where
-    I: Iterator<Item = &'a Token<'a>>,
+    I: Iterator<Item = &'a Token>,
 {
     pub fn new(tokens: I) -> Self {
         Self {

@@ -77,34 +77,34 @@ static KEYWORDS: Lazy<HashMap<String, TokenKind>> = Lazy::new(|| {
     ])
 });
 
-pub struct Token<'a> {
-    pub lexeme: &'a str,
+pub struct Token {
+    pub lexeme: String,
     pub kind: TokenKind,
 }
 
-impl Token<'_> {
+impl Token {
     #[inline]
-    fn trim_quotes(text: &str) -> &str {
-        text.trim_matches('"')
+    fn trim_quotes(text: String) -> String {
+        text.trim_matches('"').to_string()
     }
 
     pub fn eof() -> Self {
         Self {
-            lexeme: "\0",
+            lexeme: "\0".to_string(),
             kind: TokenKind::EOF,
         }
     }
 }
 
-impl fmt::Display for Token<'_> {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.lexeme)
     }
 }
 
-impl fmt::Debug for Token<'_> {
+impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lexeme = self.lexeme;
+        let lexeme = self.lexeme.clone();
         match self.kind {
             TokenKind::OpenParen => write!(f, "LEFT_PAREN {lexeme} null"),
             TokenKind::CloseParen => write!(f, "RIGHT_PAREN {lexeme} null"),
@@ -127,7 +127,9 @@ impl fmt::Debug for Token<'_> {
             TokenKind::LessEq => write!(f, "LESS_EQUAL {lexeme} null"),
             TokenKind::Identifier => write!(f, "IDENTIEIFIER {lexeme} null"),
             TokenKind::Number(n) => write!(f, "NUMBER {n} {lexeme}"),
-            TokenKind::String => write!(f, "STRING {lexeme} {}", Token::trim_quotes(lexeme)),
+            TokenKind::String => {
+                write!(f, "STRING {lexeme} {}", Token::trim_quotes(lexeme.clone()))
+            }
             TokenKind::And => write!(f, "AND {lexeme} null"),
             TokenKind::Class => write!(f, "CLASS {lexeme} null"),
             TokenKind::Else => write!(f, "ELSE {lexeme} null"),
@@ -167,16 +169,16 @@ impl<'a> From<&'a str> for Scanner<'a> {
 }
 
 impl<'a> Scanner<'a> {
-    fn tokenize(&mut self, kind: TokenKind, len: usize) -> Token<'a> {
+    fn tokenize(&mut self, kind: TokenKind, len: usize) -> Token {
         let start = self.offset;
         self.offset += len;
         Token {
-            lexeme: &self.source[start..self.offset],
+            lexeme: String::from(&self.source[start..self.offset]),
             kind,
         }
     }
 
-    fn string(&mut self) -> Token<'a> {
+    fn string(&mut self) -> Token {
         let quote = self.source.chars().next().unwrap();
         let byte = quote.len_utf8();
         let rest = &self.source[self.offset + byte..];
@@ -191,7 +193,7 @@ impl<'a> Scanner<'a> {
         self.tokenize(TokenKind::String, lexeme_len)
     }
 
-    fn slash_or_comment(&mut self) -> Option<Token<'a>> {
+    fn slash_or_comment(&mut self) -> Option<Token> {
         let slash = &self.source[self.offset..].chars().next().unwrap();
         let byte = slash.len_utf8();
         let rest = &self.source[self.offset + 1..];
@@ -205,7 +207,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn if_equal(&mut self, yes: TokenKind, no: TokenKind) -> Token<'a> {
+    fn if_equal(&mut self, yes: TokenKind, no: TokenKind) -> Token {
         let byte = self.source.chars().next().unwrap().len_utf8();
         let rest = &self.source[self.offset + byte..];
         let rest_trimmed = rest.trim_start();
@@ -216,7 +218,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn number(&mut self) -> miette::Result<Token<'a>> {
+    fn number(&mut self) -> miette::Result<Token> {
         let rest = &self.source[self.offset..];
         let end = rest
             .find(|c| !matches!(c, '.' | '0'..='9'))
@@ -244,7 +246,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn identifier(&mut self) -> miette::Result<Token<'a>> {
+    fn identifier(&mut self) -> miette::Result<Token> {
         let rest = &self.source[self.offset..];
         let end = rest.find(|c: char| c.is_whitespace()).unwrap_or(rest.len());
         let identifier = &rest[..end];
@@ -273,7 +275,7 @@ impl<'a> Scanner<'a> {
 }
 
 impl<'a> Iterator for Scanner<'a> {
-    type Item = miette::Result<Token<'a>>;
+    type Item = miette::Result<Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {

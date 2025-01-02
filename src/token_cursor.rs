@@ -5,14 +5,14 @@ use crate::{lex::TokenKind, Token};
 #[derive(Clone)]
 pub struct TokenCursor<'a, I>
 where
-    I: Iterator<Item = &'a Token<'a>>,
+    I: Iterator<Item = &'a Token>,
 {
     pub tokens: Peekable<I>,
 }
 
 impl<'a, I> TokenCursor<'a, I>
 where
-    I: Iterator<Item = &'a Token<'a>>,
+    I: Iterator<Item = &'a Token>,
 {
     pub fn new(tokens: I) -> TokenCursor<'a, I> {
         Self {
@@ -20,15 +20,15 @@ where
         }
     }
 
-    pub fn advance(&mut self) -> Option<&Token<'a>> {
+    pub fn advance(&mut self) -> Option<&Token> {
         self.tokens.next()
     }
 
-    pub fn peek(&mut self) -> Option<&Token<'a>> {
+    pub fn peek(&mut self) -> Option<&Token> {
         self.tokens.peek().copied()
     }
 
-    pub fn consume(&mut self, kind: &TokenKind) -> miette::Result<Option<&Token<'a>>> {
+    pub fn consume(&mut self, kind: &TokenKind) -> miette::Result<Option<&Token>> {
         if let Some(token) = self.peek() {
             if *kind == token.kind {
                 return Ok(self.advance());
@@ -42,7 +42,7 @@ where
         ))
     }
 
-    pub fn match_any(&mut self, kinds: &[TokenKind]) -> Option<&Token<'a>> {
+    pub fn match_any(&mut self, kinds: &[TokenKind]) -> Option<&Token> {
         if let Some(token) = self.peek() {
             if kinds.contains(&token.kind) {
                 return self.advance();

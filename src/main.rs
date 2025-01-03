@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use clap::{command, Parser, Subcommand};
-use loxide::lex::{Scanner, Token};
+use loxide::lexer::tokenize;
 use miette::{Context, IntoDiagnostic};
 
 use std::{fs, path::PathBuf};
@@ -25,15 +25,11 @@ fn main() -> miette::Result<()> {
             let file_contents = fs::read_to_string(&filename)
                 .into_diagnostic()
                 .wrap_err_with(|| format!("Failed to read {}", filename.display()))?;
-            let scanner = Scanner::from(file_contents.as_str());
+            let token_iter = tokenize(&file_contents);
 
-            for token in scanner {
-                let token = token?;
+            for token in token_iter.take(15) {
                 println!("{:?}", token);
             }
-
-            let eof_token = Token::eof();
-            println!("{eof_token:?}");
         }
     }
 

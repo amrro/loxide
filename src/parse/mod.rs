@@ -1,9 +1,9 @@
 #![allow(dead_code)]
+mod token_cursor;
 
-use crate::{
-    lex::{Token, TokenKind},
-    token_cursor::TokenCursor,
-};
+use token_cursor::TokenCursor;
+
+use crate::lexer::{Token, TokenKind};
 use std::fmt::{self};
 /// represents the Operations
 enum Op {
@@ -89,16 +89,16 @@ impl fmt::Display for Expr<'_> {
     }
 }
 
-struct Parser<'a, I>
+struct Parser<I>
 where
-    I: Iterator<Item = &'a Token>,
+    I: Iterator<Item = Token>,
 {
-    cursor: TokenCursor<'a, I>,
+    cursor: TokenCursor<I>,
 }
 
-impl<'a, I> Parser<'a, I>
+impl<'a, I> Parser<I>
 where
-    I: Iterator<Item = &'a Token>,
+    I: Iterator<Item = Token>,
 {
     pub fn new(tokens: I) -> Self {
         Self {
@@ -184,19 +184,17 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::lex::Scanner;
+
+    use crate::lexer::tokenize;
 
     use super::*;
 
     #[test]
     fn test_parser_parse() {
-        let source_code = "(5 - (3 - 1)) + -1";
         let expected = "(+ (group (- 5 (group (- 3 1)))) (- 1))";
-        let scanner = Scanner::from(source_code);
-        let tokens: miette::Result<Vec<Token>> = scanner.into_iter().collect();
-        let tokens = tokens.unwrap();
+        let tokens = tokenize("(5 - (3 - 1)) + -1");
 
-        let mut parser = Parser::new(tokens.iter());
+        let mut parser = Parser::new(tokens);
         let expr = parser.expr().unwrap();
         println!("{expr}");
 

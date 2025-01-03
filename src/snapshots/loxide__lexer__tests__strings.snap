@@ -1,9 +1,10 @@
 ---
-source: src/lex.rs
+source: src/lexer/mod.rs
 description: "\"\"\n\"string\"\n\n// expect: STRING \"\" \n// expect: STRING \"string\" string\n// expect: EOF  null"
 input_file: lox/scanning/strings.lox
 ---
 [
     STRING "" ,
     STRING "string" string,
+    EOF eof null,
 ]

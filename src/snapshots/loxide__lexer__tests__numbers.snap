@@ -1,13 +1,14 @@
 ---
-source: src/lex.rs
+source: src/lexer/mod.rs
 description: "123\n123.456\n.456\n123.\n\n// expect: NUMBER 123 123.0\n// expect: NUMBER 123.456 123.456\n// expect: DOT . null\n// expect: NUMBER 456 456.0\n// expect: NUMBER 123 123.0\n// expect: DOT . null\n// expect: EOF  null\n"
 input_file: lox/scanning/numbers.lox
 ---
 [
-    NUMBER 123 123,
+    NUMBER 123 123.0,
     NUMBER 123.456 123.456,
     DOT . null,
-    NUMBER 456 456,
-    NUMBER 123 123,
+    NUMBER 456 456.0,
+    NUMBER 123 123.0,
     DOT . null,
+    EOF eof null,
 ]

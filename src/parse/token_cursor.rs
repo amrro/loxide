@@ -1,34 +1,34 @@
 use std::iter::Peekable;
 
-use crate::{lex::TokenKind, Token};
+use crate::{lexer::TokenKind, Token};
 
 #[derive(Clone)]
-pub struct TokenCursor<'a, I>
+pub struct TokenCursor<I>
 where
-    I: Iterator<Item = &'a Token>,
+    I: Iterator<Item = Token>,
 {
     pub tokens: Peekable<I>,
 }
 
-impl<'a, I> TokenCursor<'a, I>
+impl<I> TokenCursor<I>
 where
-    I: Iterator<Item = &'a Token>,
+    I: Iterator<Item = Token>,
 {
-    pub fn new(tokens: I) -> TokenCursor<'a, I> {
+    pub fn new(tokens: I) -> TokenCursor<I> {
         Self {
             tokens: tokens.peekable(),
         }
     }
 
-    pub fn advance(&mut self) -> Option<&Token> {
+    pub fn advance(&mut self) -> Option<Token> {
         self.tokens.next()
     }
 
-    pub fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek().copied()
+    pub fn peek(&mut self) -> Option<Token> {
+        self.tokens.peek().cloned()
     }
 
-    pub fn consume(&mut self, kind: &TokenKind) -> miette::Result<Option<&Token>> {
+    pub fn consume(&mut self, kind: &TokenKind) -> miette::Result<Option<Token>> {
         if let Some(token) = self.peek() {
             if *kind == token.kind {
                 return Ok(self.advance());
@@ -42,7 +42,7 @@ where
         ))
     }
 
-    pub fn match_any(&mut self, kinds: &[TokenKind]) -> Option<&Token> {
+    pub fn match_any(&mut self, kinds: &[TokenKind]) -> Option<Token> {
         if let Some(token) = self.peek() {
             if kinds.contains(&token.kind) {
                 return self.advance();
@@ -55,18 +55,15 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::lex::{Scanner, TokenKind};
+    use crate::lexer::{tokenize, TokenKind};
 
     use super::*;
 
     #[test]
     fn test_cursor_advance() {
-        let source_code = "(5 - ( 3 + 1))";
-        let scanner = Scanner::from(source_code);
-        let tokens: miette::Result<Vec<Token>> = scanner.into_iter().collect();
-        let tokens = tokens.unwrap();
+        let tokens = tokenize("(5 - ( 3 + 1))");
 
-        let mut cursor = TokenCursor::new(tokens.iter());
+        let mut cursor = TokenCursor::new(tokens);
         assert_eq!(cursor.advance().unwrap().kind, TokenKind::OpenParen);
         assert_eq!(cursor.advance().unwrap().kind, TokenKind::Number(5.0));
         assert_eq!(cursor.advance().unwrap().kind, TokenKind::Minus);
@@ -76,6 +73,7 @@ mod tests {
         assert_eq!(cursor.advance().unwrap().kind, TokenKind::Number(1.0));
         assert_eq!(cursor.advance().unwrap().kind, TokenKind::CloseParen);
         assert_eq!(cursor.advance().unwrap().kind, TokenKind::CloseParen);
+        assert_eq!(cursor.advance().unwrap().kind, TokenKind::EOF);
         assert!(cursor.advance().is_none());
     }
 }

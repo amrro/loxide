@@ -1,5 +1,5 @@
 ---
-source: src/lex.rs
+source: src/lexer/mod.rs
 description: "space    tabs\t\t\t\tnewlines\n\n\n\n\nend\n\n// expect: IDENTIFIER space null\n// expect: IDENTIFIER tabs null\n// expect: IDENTIFIER newlines null\n// expect: IDENTIFIER end null\n// expect: EOF  null\n"
 input_file: lox/scanning/whitespace.lox
 ---
@@ -8,4 +8,5 @@ input_file: lox/scanning/whitespace.lox
     IDENTIEIFIER tabs null,
     IDENTIEIFIER newlines null,
     IDENTIEIFIER end null,
+    EOF eof null,
 ]

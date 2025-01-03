@@ -1,9 +1,7 @@
-pub mod lex;
-use crate::lex::Token;
+pub mod lexer;
+use crate::lexer::Token;
 
 pub mod parse;
-
-pub mod token_cursor;
 
 use thiserror::Error;
 

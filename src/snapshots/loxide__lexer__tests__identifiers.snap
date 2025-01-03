@@ -1,5 +1,5 @@
 ---
-source: src/lex.rs
+source: src/lexer/mod.rs
 description: "andy formless fo _ _123 _abc ab123\nabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_\n\n// expect: IDENTIFIER andy null\n// expect: IDENTIFIER formless null\n// expect: IDENTIFIER fo null\n// expect: IDENTIFIER _ null\n// expect: IDENTIFIER _123 null\n// expect: IDENTIFIER _abc null\n// expect: IDENTIFIER ab123 null\n// expect: IDENTIFIER abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_ null\n// expect: EOF  null\n"
 input_file: lox/scanning/identifiers.lox
 ---
@@ -12,4 +12,5 @@ input_file: lox/scanning/identifiers.lox
     IDENTIEIFIER _abc null,
     IDENTIEIFIER ab123 null,
     IDENTIEIFIER abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_ null,
+    EOF eof null,
 ]

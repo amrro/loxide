@@ -164,10 +164,26 @@ where
     }
 
     pub fn primary(&mut self) -> miette::Result<Expr> {
-        // TODO: Find a better way to match literal regardless of their value.
-        if let TokenKind::Number(n) = self.cursor.peek().kind {
+        let token = self.cursor.peek();
+
+        if let TokenKind::Number(n) = token.kind {
             self.cursor.advance();
             return Ok(Expr::Literal(LiteralValue::Num(n)));
+        }
+
+        if let TokenKind::True = token.kind {
+            self.cursor.advance();
+            return Ok(Expr::Literal(LiteralValue::Bool(true)));
+        }
+
+        if let TokenKind::False = token.kind {
+            self.cursor.advance();
+            return Ok(Expr::Literal(LiteralValue::Bool(false)));
+        }
+
+        if let TokenKind::Nil = token.kind {
+            self.cursor.advance();
+            return Ok(Expr::Literal(LiteralValue::Nil));
         }
 
         if self.cursor.match_any(&[TokenKind::OpenParen]).is_some() {
@@ -198,5 +214,4 @@ mod tests {
 
         assert_eq!(expr.to_string(), expected);
     }
-    // go to ipad.
 }

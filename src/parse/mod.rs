@@ -43,17 +43,17 @@ impl fmt::Display for Op {
     }
 }
 
-enum LiteralValue<'a> {
-    String(&'a str),
+enum LiteralValue {
+    String(String),
     Num(f64),
     Bool(bool),
     Nil,
 }
 
-impl fmt::Display for LiteralValue<'_> {
+impl fmt::Display for LiteralValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
-            LiteralValue::String(string) => String::from(*string),
+            LiteralValue::String(string) => String::from(string),
             LiteralValue::Num(n) => n.clone().to_string(),
             LiteralValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
             LiteralValue::Nil => "nil".to_string(),
@@ -63,22 +63,22 @@ impl fmt::Display for LiteralValue<'_> {
     }
 }
 
-enum Expr<'a> {
+enum Expr {
     Binary {
-        left: Box<Expr<'a>>,
+        left: Box<Expr>,
         op: Op,
-        right: Box<Expr<'a>>,
+        right: Box<Expr>,
     },
 
     Unary {
         op: Op,
-        expr: Box<Expr<'a>>,
+        expr: Box<Expr>,
     },
-    Grouping(Box<Expr<'a>>),
-    Literal(LiteralValue<'a>),
+    Grouping(Box<Expr>),
+    Literal(LiteralValue),
 }
 
-impl fmt::Display for Expr<'_> {
+impl fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expr::Binary { left, op, right } => write!(f, "({op} {left} {right})"),
@@ -96,7 +96,7 @@ where
     cursor: TokenCursor<I>,
 }
 
-impl<'a, I> Parser<I>
+impl<I> Parser<I>
 where
     I: Iterator<Item = Token>,
 {
@@ -106,11 +106,11 @@ where
         }
     }
 
-    pub fn expr(&mut self) -> miette::Result<Expr<'a>> {
+    pub fn expr(&mut self) -> miette::Result<Expr> {
         self.term()
     }
 
-    pub fn term(&mut self) -> miette::Result<Expr<'a>> {
+    pub fn term(&mut self) -> miette::Result<Expr> {
         use TokenKind::*;
 
         let left = self.factor()?;
@@ -131,7 +131,7 @@ where
         Ok(left)
     }
 
-    pub fn factor(&mut self) -> miette::Result<Expr<'a>> {
+    pub fn factor(&mut self) -> miette::Result<Expr> {
         use TokenKind::*;
 
         let left = self.unary()?;
@@ -151,7 +151,7 @@ where
         Ok(left)
     }
 
-    pub fn unary(&mut self) -> miette::Result<Expr<'a>> {
+    pub fn unary(&mut self) -> miette::Result<Expr> {
         if self.cursor.match_any(&[TokenKind::Minus]).is_some() {
             let expr = Box::new(self.unary()?);
             return Ok(Expr::Unary {
@@ -163,13 +163,11 @@ where
         self.primary()
     }
 
-    pub fn primary(&mut self) -> miette::Result<Expr<'a>> {
+    pub fn primary(&mut self) -> miette::Result<Expr> {
         // TODO: Find a better way to match literal regardless of their value.
-        if let Some(token) = self.cursor.peek() {
-            if let TokenKind::Number(n) = token.kind {
-                self.cursor.advance();
-                return Ok(Expr::Literal(LiteralValue::Num(n)));
-            }
+        if let TokenKind::Number(n) = self.cursor.peek().kind {
+            self.cursor.advance();
+            return Ok(Expr::Literal(LiteralValue::Num(n)));
         }
 
         if self.cursor.match_any(&[TokenKind::OpenParen]).is_some() {
@@ -200,4 +198,5 @@ mod tests {
 
         assert_eq!(expr.to_string(), expected);
     }
+    // go to ipad.
 }

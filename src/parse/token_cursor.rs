@@ -24,29 +24,25 @@ where
         self.tokens.next()
     }
 
-    pub fn peek(&mut self) -> Option<Token> {
-        self.tokens.peek().cloned()
+    pub fn peek(&mut self) -> Token {
+        self.tokens.peek().unwrap_or(&Token::eof()).clone()
     }
 
     pub fn consume(&mut self, kind: &TokenKind) -> miette::Result<Option<Token>> {
-        if let Some(token) = self.peek() {
-            if *kind == token.kind {
-                return Ok(self.advance());
-            }
+        if self.peek().kind == *kind {
+            return Ok(self.advance());
         }
 
         Err(miette::miette!(
-            "expected: {:?}, found: {:?}",
+            "expected: {:?} after experession, found: {:?}",
             kind,
-            self.peek().map(|t| t.kind)
+            self.peek().kind
         ))
     }
 
     pub fn match_any(&mut self, kinds: &[TokenKind]) -> Option<Token> {
-        if let Some(token) = self.peek() {
-            if kinds.contains(&token.kind) {
-                return self.advance();
-            }
+        if kinds.contains(&self.peek().kind) {
+            return self.advance();
         }
 
         None

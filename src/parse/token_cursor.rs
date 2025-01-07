@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 
-use crate::{lexer::TokenKind, Token};
+use crate::token::{Token, TokenKind};
 
 #[derive(Clone)]
 pub struct TokenCursor<I>
@@ -51,7 +51,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::{tokenize, TokenKind};
+    use crate::lexer::tokenize;
+    use crate::token::TokenKind;
 
     use super::*;
 

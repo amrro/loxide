@@ -1,21 +1,26 @@
-use super::{Token, TokenKind, KEYWORDS};
+use crate::token::{Token, TokenKind, KEYWORDS};
 use std::str::Chars;
 
 const EOF_CHAR: char = '\0';
 
 pub struct Cursor<'a> {
     chars: Chars<'a>,
+    /// Represent how many chars has been processed for better diagnositics.
+    offset: usize,
 }
 
 impl<'a> Cursor<'a> {
     pub(crate) fn new(souce_code: &'a str) -> Self {
         Self {
             chars: souce_code.chars(),
+            offset: 0_usize,
         }
     }
 
     pub(crate) fn advance(&mut self) -> Option<char> {
-        self.chars.next()
+        let next = self.chars.next()?;
+        self.offset += 1;
+        Some(next)
     }
 
     pub(crate) fn first(&mut self) -> char {
@@ -55,7 +60,7 @@ impl<'a> Cursor<'a> {
             }
         }
         let value = lexeme.parse::<f64>().unwrap();
-        Token::new(lexeme, TokenKind::Number(value))
+        Token::new(lexeme, TokenKind::Number(value), self.offset)
     }
 
     fn string(&mut self) -> Token {
@@ -67,7 +72,7 @@ impl<'a> Cursor<'a> {
             lexeme.push(ch);
         }
 
-        Token::new(lexeme, TokenKind::String)
+        Token::new(lexeme, TokenKind::String, self.offset)
     }
 
     pub(crate) fn identifier(&mut self, first_ch: char) -> Token {
@@ -77,9 +82,9 @@ impl<'a> Cursor<'a> {
         }
 
         if let Some(&kind) = KEYWORDS.get(&lexeme) {
-            Token::new(lexeme, kind)
+            Token::new(lexeme, kind, self.offset)
         } else {
-            Token::new(lexeme, TokenKind::Identifier)
+            Token::new(lexeme, TokenKind::Identifier, self.offset)
         }
     }
 
@@ -102,31 +107,31 @@ impl<'a> Cursor<'a> {
                 self.eat_whitespace();
                 self.advance_token()
             }
-            '(' => Token::new(ch_str, TokenKind::OpenParen),
-            ')' => Token::new(ch_str, TokenKind::CloseParen),
-            '{' => Token::new(ch_str, TokenKind::OpenBrace),
-            '}' => Token::new(ch_str, TokenKind::CloseBrace),
-            ',' => Token::new(ch_str, TokenKind::Comma),
-            '.' => Token::new(ch_str, TokenKind::Dot),
-            '-' => Token::new(ch_str, TokenKind::Minus),
-            '+' => Token::new(ch_str, TokenKind::Plus),
-            ';' => Token::new(ch_str, TokenKind::Semi),
-            '*' => Token::new(ch_str, TokenKind::Star),
-            '<' => Token::new(ch_str, TokenKind::Less),
-            '>' => Token::new(ch_str, TokenKind::Greater),
-            '=' => Token::new(ch_str, TokenKind::Eq),
-            '!' => Token::new(ch_str, TokenKind::Bang),
+            '(' => Token::new(ch_str, TokenKind::OpenParen, self.offset),
+            ')' => Token::new(ch_str, TokenKind::CloseParen, self.offset),
+            '{' => Token::new(ch_str, TokenKind::OpenBrace, self.offset),
+            '}' => Token::new(ch_str, TokenKind::CloseBrace, self.offset),
+            ',' => Token::new(ch_str, TokenKind::Comma, self.offset),
+            '.' => Token::new(ch_str, TokenKind::Dot, self.offset),
+            '-' => Token::new(ch_str, TokenKind::Minus, self.offset),
+            '+' => Token::new(ch_str, TokenKind::Plus, self.offset),
+            ';' => Token::new(ch_str, TokenKind::Semi, self.offset),
+            '*' => Token::new(ch_str, TokenKind::Star, self.offset),
+            '<' => Token::new(ch_str, TokenKind::Less, self.offset),
+            '>' => Token::new(ch_str, TokenKind::Greater, self.offset),
+            '=' => Token::new(ch_str, TokenKind::Eq, self.offset),
+            '!' => Token::new(ch_str, TokenKind::Bang, self.offset),
             '"' => self.string(),
             '/' => {
                 if self.is_match('/') {
                     self.line_comment();
                     return self.advance_token();
                 }
-                Token::new(ch.to_string(), TokenKind::Slash)
+                Token::new(ch.to_string(), TokenKind::Slash, self.offset)
             }
             '0'..='9' => self.number(ch),
             'a'..='z' | 'A'..='Z' | '_' => self.identifier(ch),
-            _ => Token::new(ch_str, TokenKind::Unkown),
+            _ => Token::new(ch_str, TokenKind::Unkown, self.offset),
         }
     }
 }

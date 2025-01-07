@@ -3,8 +3,9 @@ mod token_cursor;
 
 use token_cursor::TokenCursor;
 
-use crate::lexer::{Token, TokenKind};
 use std::fmt::{self};
+
+use crate::token::{Token, TokenKind};
 /// represents the Operations
 enum Op {
     Plus,
@@ -111,13 +112,11 @@ where
     }
 
     pub fn term(&mut self) -> miette::Result<Expr> {
-        use TokenKind::*;
-
         let left = self.factor()?;
 
         if let Some(op) = self
             .cursor
-            .match_any(&[Plus, Minus])
+            .match_any(&[TokenKind::Plus, TokenKind::Minus])
             .map(|t| Op::try_from(&t.kind))
         {
             let right = Box::new(self.factor()?);
@@ -132,12 +131,10 @@ where
     }
 
     pub fn factor(&mut self) -> miette::Result<Expr> {
-        use TokenKind::*;
-
         let left = self.unary()?;
         if let Some(op) = self
             .cursor
-            .match_any(&[Star, Slash])
+            .match_any(&[TokenKind::Star, TokenKind::Slash])
             .map(|t| Op::try_from(&t.kind))
         {
             let right = Box::new(self.unary()?);

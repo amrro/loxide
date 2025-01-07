@@ -1,7 +1,8 @@
 pub mod lexer;
-use crate::lexer::Token;
+pub mod token;
 
 pub mod parse;
+pub mod span;
 
 use thiserror::Error;
 

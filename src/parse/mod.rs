@@ -251,6 +251,11 @@ where
             });
         }
 
+        if self.cursor.match_any(&[TokenKind::Bang]).is_some() {
+            let expr = Box::new(self.unary()?);
+            return Ok(Expr::Unary { op: Op::Bang, expr });
+        }
+
         self.primary()
     }
 

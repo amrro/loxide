@@ -66,13 +66,6 @@ impl Op {
     }
 }
 
-#[test]
-fn test_negate() {
-    let tokens = interpret("6 ! 6");
-    println!("{tokens:?}");
-    assert!(false);
-}
-
 impl fmt::Debug for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -164,12 +157,8 @@ impl fmt::Debug for LiteralValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LiteralValue::String(string) => write!(f, "(String) {}", string),
-            LiteralValue::Num(n) => write!(f, "(Num) {}", n.clone().to_string()),
-            LiteralValue::Bool(b) => write!(
-                f,
-                "(bool) {}",
-                if *b { "true" } else { "false" }.to_string()
-            ),
+            LiteralValue::Num(n) => write!(f, "(Num) {}", n.clone()),
+            LiteralValue::Bool(b) => write!(f, "(bool) {}", if *b { "true" } else { "false" }),
             LiteralValue::Nil => write!(f, "nil"),
         }
     }

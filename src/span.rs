@@ -27,6 +27,10 @@ impl Span {
         self.len
     }
 
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0

@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 mod token_cursor;
 
+use crate::{
+    lexer::tokenize,
+    token::{Token, TokenKind},
+};
+use std::fmt::{self};
 use token_cursor::TokenCursor;
 
-use std::fmt::{self};
-
-use crate::token::{Token, TokenKind};
 /// represents the Operations
 enum Op {
     Plus,
@@ -32,23 +34,100 @@ impl TryFrom<&TokenKind> for Op {
     }
 }
 
+impl Op {
+    fn apply(&self, lhs: LiteralValue, rhs: LiteralValue) -> miette::Result<LiteralValue> {
+        match self {
+            Op::Plus => lhs.add(&rhs),
+            Op::Minus => lhs.minus(&rhs),
+            Op::Mul => lhs.mul(&rhs),
+            Op::Divide => lhs.div(&rhs),
+            // TODO: A new error emerges: unsupportedOperation.
+            _ => Err(miette::miette!("unsupported Operations")),
+        }
+    }
+
+    fn negate(&self, value: LiteralValue) -> miette::Result<LiteralValue> {
+        match (self, value) {
+            (Op::Minus, LiteralValue::Num(num)) => Ok(LiteralValue::Num(-num)),
+            (Op::Bang, LiteralValue::Bool(flag)) => Ok(LiteralValue::Bool(!flag)),
+            // TODO: A new error emerges: unsupportedOperation.
+            _ => Err(miette::miette!("unsupported Operations")),
+        }
+    }
+}
+
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Op::Plus => write!(f, "+"),
             Op::Minus => write!(f, "-"),
-            Op::Mul => write!(f, "-"),
+            Op::Mul => write!(f, "*"),
             Op::Divide => write!(f, "/"),
             Op::Bang => write!(f, "!"),
         }
     }
 }
 
-enum LiteralValue {
+#[derive(Clone)]
+pub enum LiteralValue {
     String(String),
     Num(f64),
     Bool(bool),
     Nil,
+}
+
+impl LiteralValue {
+    fn add(&self, rhs: &Self) -> miette::Result<Self> {
+        match (self, rhs) {
+            (LiteralValue::String(first), LiteralValue::String(second)) => {
+                Ok(LiteralValue::String(first.to_owned() + second))
+            }
+            (LiteralValue::Num(n_lhs), LiteralValue::Num(n_rhs)) => {
+                Ok(LiteralValue::Num(*n_lhs + *n_rhs))
+            }
+            // TODO: A new error emerges: unsupportedOperation.
+            _ => Err(miette::miette!("unsupported Operations")),
+        }
+    }
+
+    fn minus(&self, rhs: &Self) -> miette::Result<Self> {
+        match (self, rhs) {
+            (LiteralValue::Num(n_rhs), LiteralValue::Num(n_lhs)) => {
+                Ok(LiteralValue::Num(*n_rhs - *n_lhs))
+            }
+            // TODO: A new error emerges: unsupportedOperation.
+            _ => Err(miette::miette!("unsupported Operations")),
+        }
+    }
+
+    fn mul(&self, rhs: &Self) -> miette::Result<Self> {
+        match (self, rhs) {
+            (LiteralValue::Num(left), LiteralValue::Num(right)) => {
+                Ok(LiteralValue::Num(left * right))
+            }
+            // TODO: A new error emerges: unsupportedOperation.
+            _ => Err(miette::miette!("unsupported Operations")),
+        }
+    }
+
+    fn div(&self, rhs: &Self) -> miette::Result<Self> {
+        match (self, rhs) {
+            (LiteralValue::Num(left), LiteralValue::Num(right)) => {
+                Ok(LiteralValue::Num(left / right))
+            }
+            // TODO: A new error emerges: unsupportedOperation.
+            _ => Err(miette::miette!("unsupported Operations")),
+        }
+    }
+
+    fn negate(&self) -> miette::Result<Self> {
+        if let LiteralValue::Bool(flag) = self {
+            return Ok(LiteralValue::Bool(!flag));
+        }
+
+        // TODO: A new error emerges: unsupportedOperation.
+        Err(miette::miette!("unsupported Operations"))
+    }
 }
 
 impl fmt::Display for LiteralValue {
@@ -77,6 +156,21 @@ enum Expr {
     },
     Grouping(Box<Expr>),
     Literal(LiteralValue),
+}
+
+impl Expr {
+    fn evalute(&self) -> miette::Result<LiteralValue> {
+        match self {
+            Expr::Binary { left, op, right } => {
+                let left_literal = left.evalute()?;
+                let right_literal = right.evalute()?;
+                op.apply(right_literal, left_literal)
+            }
+            Expr::Unary { op, expr } => op.negate(expr.evalute()?),
+            Expr::Grouping(expr) => expr.evalute(),
+            Expr::Literal(literal) => Ok(literal.clone()),
+        }
+    }
 }
 
 impl fmt::Display for Expr {
@@ -193,6 +287,12 @@ where
     }
 }
 
+pub fn interpret(source_code: &str) -> miette::Result<LiteralValue> {
+    let tokens = tokenize(source_code);
+    let mut parser = Parser::new(tokens);
+    parser.expr()?.evalute()
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -210,5 +310,12 @@ mod tests {
         println!("{expr}");
 
         assert_eq!(expr.to_string(), expected);
+    }
+
+    fn test_expr_evalute() {
+        let literal = interpret("(5 - (3 - 1)) + -1").unwrap();
+        if let LiteralValue::Num(num) = literal {
+            assert_eq!(num, 2.0);
+        }
     }
 }

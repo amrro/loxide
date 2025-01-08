@@ -1,10 +1,14 @@
 #![allow(dead_code)]
 
 use clap::{command, Parser, Subcommand};
-use loxide::lexer::tokenize;
+use loxide::{interpret, lexer::tokenize};
 use miette::{Context, IntoDiagnostic};
 
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    io::{self, stdout, Write},
+    path::PathBuf,
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -16,6 +20,7 @@ struct Args {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Tokenize { filename: PathBuf },
+    Interpret,
 }
 
 fn main() -> miette::Result<()> {
@@ -31,7 +36,36 @@ fn main() -> miette::Result<()> {
                 println!("{:?}", token);
             }
         }
+        _ => run_repl(),
     }
 
     Ok(())
+}
+
+fn run_repl() {
+    let mut input = String::new();
+    let stdin = io::stdin();
+
+    loop {
+        print!("> ");
+        input.clear();
+        stdout().flush().unwrap();
+
+        if let Err(e) = stdin.read_line(&mut input) {
+            eprintln!("failed to read input");
+            eprintln!("{e}");
+            println!();
+            continue;
+        }
+
+        let trimmed_input = input.trim();
+        if trimmed_input == ":q" || trimmed_input == "quite" || trimmed_input == "exit" {
+            break;
+        }
+
+        match interpret(trimmed_input) {
+            Ok(literal) => println!("{literal}\n"),
+            Err(e) => eprintln!("Error: {e}"),
+        }
+    }
 }

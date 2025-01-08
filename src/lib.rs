@@ -1,8 +1,9 @@
 pub mod lexer;
+pub mod span;
 pub mod token;
 
 pub mod parse;
-pub mod span;
+pub use parse::interpret;
 
 use thiserror::Error;
 use token::Token;

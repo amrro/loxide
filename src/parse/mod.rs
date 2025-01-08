@@ -1,15 +1,20 @@
 #![allow(dead_code)]
+pub mod errors;
+
 mod token_cursor;
 
 use crate::{
     lexer::tokenize,
     token::{Token, TokenKind},
 };
+use errors::RuntimeError;
+use miette::IntoDiagnostic;
 use std::fmt::{self};
 use token_cursor::TokenCursor;
 
-/// represents the Operations
-enum Op {
+/// Operations
+#[derive(Clone, Copy)]
+pub enum Op {
     Plus,
     Minus,
     Mul,
@@ -41,8 +46,12 @@ impl Op {
             Op::Minus => lhs.minus(&rhs),
             Op::Mul => lhs.mul(&rhs),
             Op::Divide => lhs.div(&rhs),
-            // TODO: A new error emerges: unsupportedOperation.
-            _ => Err(miette::miette!("unsupported Operations")),
+            _ => Err(RuntimeError::UnsupportedBinaryOp {
+                op: *self,
+                lhs: lhs.clone(),
+                rhs: rhs.clone(),
+            })
+            .into_diagnostic(),
         }
     }
 
@@ -50,13 +59,14 @@ impl Op {
         match (self, value) {
             (Op::Minus, LiteralValue::Num(num)) => Ok(LiteralValue::Num(-num)),
             (Op::Bang, LiteralValue::Bool(flag)) => Ok(LiteralValue::Bool(!flag)),
-            // TODO: A new error emerges: unsupportedOperation.
-            _ => Err(miette::miette!("unsupported Operations")),
+            (op, literal) => {
+                Err(RuntimeError::UnsupportedUnaryOp { op: *op, literal }).into_diagnostic()
+            }
         }
     }
 }
 
-impl fmt::Display for Op {
+impl fmt::Debug for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Op::Plus => write!(f, "+"),
@@ -65,6 +75,12 @@ impl fmt::Display for Op {
             Op::Divide => write!(f, "/"),
             Op::Bang => write!(f, "!"),
         }
+    }
+}
+
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}")
     }
 }
 
@@ -85,8 +101,12 @@ impl LiteralValue {
             (LiteralValue::Num(n_lhs), LiteralValue::Num(n_rhs)) => {
                 Ok(LiteralValue::Num(*n_lhs + *n_rhs))
             }
-            // TODO: A new error emerges: unsupportedOperation.
-            _ => Err(miette::miette!("unsupported Operations")),
+            _ => Err(RuntimeError::UnsupportedBinaryOp {
+                op: Op::Plus,
+                lhs: self.clone(),
+                rhs: rhs.clone(),
+            })
+            .into_diagnostic(),
         }
     }
 
@@ -95,8 +115,12 @@ impl LiteralValue {
             (LiteralValue::Num(n_rhs), LiteralValue::Num(n_lhs)) => {
                 Ok(LiteralValue::Num(*n_rhs - *n_lhs))
             }
-            // TODO: A new error emerges: unsupportedOperation.
-            _ => Err(miette::miette!("unsupported Operations")),
+            _ => Err(RuntimeError::UnsupportedBinaryOp {
+                op: Op::Minus,
+                lhs: self.clone(),
+                rhs: rhs.clone(),
+            })
+            .into_diagnostic(),
         }
     }
 
@@ -105,8 +129,12 @@ impl LiteralValue {
             (LiteralValue::Num(left), LiteralValue::Num(right)) => {
                 Ok(LiteralValue::Num(left * right))
             }
-            // TODO: A new error emerges: unsupportedOperation.
-            _ => Err(miette::miette!("unsupported Operations")),
+            _ => Err(RuntimeError::UnsupportedBinaryOp {
+                op: Op::Mul,
+                lhs: self.clone(),
+                rhs: rhs.clone(),
+            })
+            .into_diagnostic(),
         }
     }
 
@@ -115,18 +143,24 @@ impl LiteralValue {
             (LiteralValue::Num(left), LiteralValue::Num(right)) => {
                 Ok(LiteralValue::Num(left / right))
             }
-            // TODO: A new error emerges: unsupportedOperation.
-            _ => Err(miette::miette!("unsupported Operations")),
+            _ => Err(RuntimeError::UnsupportedBinaryOp {
+                op: Op::Divide,
+                lhs: self.clone(),
+                rhs: rhs.clone(),
+            })
+            .into_diagnostic(),
         }
     }
+}
 
-    fn negate(&self) -> miette::Result<Self> {
-        if let LiteralValue::Bool(flag) = self {
-            return Ok(LiteralValue::Bool(!flag));
+impl fmt::Debug for LiteralValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LiteralValue::String(string) => write!(f, "(String) {}", string),
+            LiteralValue::Num(n) => write!(f, "(Num) {}", n.clone()),
+            LiteralValue::Bool(b) => write!(f, "(bool) {}", if *b { "true" } else { "false" }),
+            LiteralValue::Nil => write!(f, "nil"),
         }
-
-        // TODO: A new error emerges: unsupportedOperation.
-        Err(miette::miette!("unsupported Operations"))
     }
 }
 
@@ -249,6 +283,11 @@ where
                 op: Op::Minus,
                 expr,
             });
+        }
+
+        if self.cursor.match_any(&[TokenKind::Bang]).is_some() {
+            let expr = Box::new(self.unary()?);
+            return Ok(Expr::Unary { op: Op::Bang, expr });
         }
 
         self.primary()

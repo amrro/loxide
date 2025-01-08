@@ -77,7 +77,7 @@ impl<'a> Cursor<'a> {
 
     pub(crate) fn identifier(&mut self, first_ch: char) -> Token {
         let mut lexeme = String::from(first_ch);
-        while !self.first().is_whitespace() && self.first() != '.' {
+        while !self.first().is_whitespace() && self.first() != '.' && self.first() != EOF_CHAR {
             lexeme.push(self.advance().unwrap());
         }
 

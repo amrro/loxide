@@ -1,13 +1,21 @@
 #![allow(dead_code)]
 
 use clap::{command, Parser, Subcommand};
-use loxide::lexer::tokenize;
+use loxide::{interpret, lexer::tokenize};
 use miette::{Context, IntoDiagnostic};
 
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    io::{self, stdout, Write},
+    path::PathBuf,
+};
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(
+    version = "0.0.1",
+    about = "Loxide: A simple interpreter with a REPL.",
+    long_about = "Loxide is a simple interpreter for educational purposes. I just created it for fun."
+)]
 struct Args {
     #[command(subcommand)]
     command: Commands,
@@ -15,7 +23,15 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    Tokenize { filename: PathBuf },
+    #[command(about = "Tokenize a source file and output the resulting tokens.")]
+    Tokenize {
+        /// Path to the source file
+        #[arg(help = "The path to a file to tokenize.")]
+        filename: PathBuf,
+    },
+
+    #[command(about = "Start an interactive REPL to evaluate expressions.")]
+    Interpret,
 }
 
 fn main() -> miette::Result<()> {
@@ -31,7 +47,36 @@ fn main() -> miette::Result<()> {
                 println!("{:?}", token);
             }
         }
+        _ => run_repl(),
     }
 
     Ok(())
+}
+
+fn run_repl() {
+    let mut input = String::new();
+    let stdin = io::stdin();
+
+    loop {
+        print!("> ");
+        input.clear();
+        stdout().flush().unwrap();
+
+        if let Err(e) = stdin.read_line(&mut input) {
+            eprintln!("failed to read input");
+            eprintln!("{e}");
+            println!();
+            continue;
+        }
+
+        let trimmed_input = input.trim();
+        if trimmed_input == ":q" || trimmed_input == "quite" || trimmed_input == "exit" {
+            break;
+        }
+
+        match interpret(trimmed_input) {
+            Ok(literal) => println!("{literal}\n"),
+            Err(e) => eprintln!("Error: {e}"),
+        }
+    }
 }

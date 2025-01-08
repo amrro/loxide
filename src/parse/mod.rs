@@ -120,13 +120,18 @@ impl LiteralValue {
         }
     }
 
-    fn negate(&self) -> miette::Result<Self> {
-        if let LiteralValue::Bool(flag) = self {
-            return Ok(LiteralValue::Bool(!flag));
+impl fmt::Debug for LiteralValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LiteralValue::String(string) => write!(f, "(String) {}", string),
+            LiteralValue::Num(n) => write!(f, "(Num) {}", n.clone().to_string()),
+            LiteralValue::Bool(b) => write!(
+                f,
+                "(bool) {}",
+                if *b { "true" } else { "false" }.to_string()
+            ),
+            LiteralValue::Nil => write!(f, "nil"),
         }
-
-        // TODO: A new error emerges: unsupportedOperation.
-        Err(miette::miette!("unsupported Operations"))
     }
 }
 

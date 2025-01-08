@@ -8,6 +8,7 @@ where
     I: Iterator<Item = Token>,
 {
     pub tokens: Peekable<I>,
+    pub offset: usize,
 }
 
 impl<I> TokenCursor<I>
@@ -17,11 +18,14 @@ where
     pub fn new(tokens: I) -> TokenCursor<I> {
         Self {
             tokens: tokens.peekable(),
+            offset: 0_usize,
         }
     }
 
     pub fn advance(&mut self) -> Option<Token> {
-        self.tokens.next()
+        let next = self.tokens.next()?;
+        self.offset += next.span.len();
+        Some(next)
     }
 
     pub fn peek(&mut self) -> Token {

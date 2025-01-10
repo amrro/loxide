@@ -1,15 +1,11 @@
-use super::{LiteralValue, Op};
+use super::{LitVal, Op};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum RuntimeError {
     #[error("Cannot perform operation {op} on types {lhs} and {rhs}")]
-    UnsupportedBinaryOp {
-        op: Op,
-        lhs: LiteralValue,
-        rhs: LiteralValue,
-    },
+    UnsupportedBinaryOp { op: Op, lhs: LitVal, rhs: LitVal },
 
     #[error("Cannot apply operation {op} on type {literal:?}")]
-    UnsupportedUnaryOp { op: Op, literal: LiteralValue },
+    UnsupportedUnaryOp { op: Op, literal: LitVal },
 }

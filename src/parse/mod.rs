@@ -20,6 +20,12 @@ pub enum Op {
     Mul,
     Divide,
     Bang,
+    Greater,
+    GreaterEq,
+    Less,
+    LessEq,
+    EqEq,
+    BangEq,
 }
 
 impl TryFrom<&TokenKind> for Op {
@@ -31,6 +37,12 @@ impl TryFrom<&TokenKind> for Op {
             TokenKind::Minus => Ok(Op::Minus),
             TokenKind::Star => Ok(Op::Mul),
             TokenKind::Bang => Ok(Op::Bang),
+            TokenKind::EqEq => Ok(Op::EqEq),
+            TokenKind::BangEq => Ok(Op::BangEq),
+            TokenKind::Less => Ok(Op::Less),
+            TokenKind::LessEq => Ok(Op::LessEq),
+            TokenKind::Greater => Ok(Op::Greater),
+            TokenKind::GreaterEq => Ok(Op::GreaterEq),
             _ => Err(miette::miette!(
                 "Token type {:?} cannot be convert into operator.",
                 kind
@@ -40,12 +52,18 @@ impl TryFrom<&TokenKind> for Op {
 }
 
 impl Op {
-    fn apply(&self, lhs: LiteralValue, rhs: LiteralValue) -> miette::Result<LiteralValue> {
+    fn apply(&self, lhs: LitVal, rhs: LitVal) -> miette::Result<LitVal> {
         match self {
             Op::Plus => lhs.add(&rhs),
             Op::Minus => lhs.minus(&rhs),
             Op::Mul => lhs.mul(&rhs),
             Op::Divide => lhs.div(&rhs),
+            Op::EqEq => Ok(LitVal::Bool(lhs == rhs)),
+            Op::BangEq => Ok(LitVal::Bool(lhs != rhs)),
+            Op::Less => lhs.less(&rhs),
+            Op::LessEq => lhs.less_eq(&rhs),
+            Op::Greater => lhs.greater(&rhs),
+            Op::GreaterEq => lhs.greater_eq(&rhs),
             _ => Err(RuntimeError::UnsupportedBinaryOp {
                 op: *self,
                 lhs: lhs.clone(),
@@ -55,10 +73,10 @@ impl Op {
         }
     }
 
-    fn negate(&self, value: LiteralValue) -> miette::Result<LiteralValue> {
+    fn negate(&self, value: LitVal) -> miette::Result<LitVal> {
         match (self, value) {
-            (Op::Minus, LiteralValue::Num(num)) => Ok(LiteralValue::Num(-num)),
-            (Op::Bang, LiteralValue::Bool(flag)) => Ok(LiteralValue::Bool(!flag)),
+            (Op::Minus, LitVal::Num(num)) => Ok(LitVal::Num(-num)),
+            (Op::Bang, LitVal::Bool(flag)) => Ok(LitVal::Bool(!flag)),
             (op, literal) => {
                 Err(RuntimeError::UnsupportedUnaryOp { op: *op, literal }).into_diagnostic()
             }
@@ -74,6 +92,12 @@ impl fmt::Debug for Op {
             Op::Mul => write!(f, "*"),
             Op::Divide => write!(f, "/"),
             Op::Bang => write!(f, "!"),
+            Op::Greater => write!(f, ">"),
+            Op::GreaterEq => write!(f, ">="),
+            Op::Less => write!(f, "<"),
+            Op::LessEq => write!(f, "<="),
+            Op::EqEq => write!(f, "=="),
+            Op::BangEq => write!(f, "!="),
         }
     }
 }
@@ -84,23 +108,21 @@ impl fmt::Display for Op {
     }
 }
 
-#[derive(Clone)]
-pub enum LiteralValue {
+#[derive(Clone, PartialEq)]
+pub enum LitVal {
     String(String),
     Num(f64),
     Bool(bool),
     Nil,
 }
 
-impl LiteralValue {
+impl LitVal {
     fn add(&self, rhs: &Self) -> miette::Result<Self> {
         match (self, rhs) {
-            (LiteralValue::String(first), LiteralValue::String(second)) => {
-                Ok(LiteralValue::String(first.to_owned() + second))
+            (LitVal::String(first), LitVal::String(second)) => {
+                Ok(LitVal::String(first.to_owned() + second))
             }
-            (LiteralValue::Num(n_lhs), LiteralValue::Num(n_rhs)) => {
-                Ok(LiteralValue::Num(*n_lhs + *n_rhs))
-            }
+            (LitVal::Num(n_lhs), LitVal::Num(n_rhs)) => Ok(LitVal::Num(*n_lhs + *n_rhs)),
             _ => Err(RuntimeError::UnsupportedBinaryOp {
                 op: Op::Plus,
                 lhs: self.clone(),
@@ -112,9 +134,7 @@ impl LiteralValue {
 
     fn minus(&self, rhs: &Self) -> miette::Result<Self> {
         match (self, rhs) {
-            (LiteralValue::Num(n_rhs), LiteralValue::Num(n_lhs)) => {
-                Ok(LiteralValue::Num(*n_rhs - *n_lhs))
-            }
+            (LitVal::Num(n_rhs), LitVal::Num(n_lhs)) => Ok(LitVal::Num(*n_rhs - *n_lhs)),
             _ => Err(RuntimeError::UnsupportedBinaryOp {
                 op: Op::Minus,
                 lhs: self.clone(),
@@ -126,9 +146,7 @@ impl LiteralValue {
 
     fn mul(&self, rhs: &Self) -> miette::Result<Self> {
         match (self, rhs) {
-            (LiteralValue::Num(left), LiteralValue::Num(right)) => {
-                Ok(LiteralValue::Num(left * right))
-            }
+            (LitVal::Num(left), LitVal::Num(right)) => Ok(LitVal::Num(left * right)),
             _ => Err(RuntimeError::UnsupportedBinaryOp {
                 op: Op::Mul,
                 lhs: self.clone(),
@@ -140,9 +158,7 @@ impl LiteralValue {
 
     fn div(&self, rhs: &Self) -> miette::Result<Self> {
         match (self, rhs) {
-            (LiteralValue::Num(left), LiteralValue::Num(right)) => {
-                Ok(LiteralValue::Num(left / right))
-            }
+            (LitVal::Num(left), LitVal::Num(right)) => Ok(LitVal::Num(left / right)),
             _ => Err(RuntimeError::UnsupportedBinaryOp {
                 op: Op::Divide,
                 lhs: self.clone(),
@@ -151,26 +167,61 @@ impl LiteralValue {
             .into_diagnostic(),
         }
     }
+
+    fn compare_num<F>(&self, rhs: &Self, predicate: F) -> miette::Result<Self>
+    where
+        F: FnOnce(&f64, &f64) -> bool,
+    {
+        match (self, rhs) {
+            (LitVal::Num(left), LitVal::Num(right)) => Ok(LitVal::Bool(predicate(right, left))),
+            _ => Err(RuntimeError::UnsupportedBinaryOp {
+                op: Op::Divide,
+                lhs: self.clone(),
+                rhs: rhs.clone(),
+            })
+            .into_diagnostic(),
+        }
+    }
+
+    fn eq(&self, rhs: &Self) -> miette::Result<Self> {
+        self.compare_num(rhs, f64::eq)
+    }
+
+    fn less(&self, rhs: &Self) -> miette::Result<Self> {
+        self.compare_num(rhs, f64::lt)
+    }
+
+    fn less_eq(&self, rhs: &Self) -> miette::Result<Self> {
+        self.compare_num(rhs, f64::le)
+    }
+
+    fn greater(&self, rhs: &Self) -> miette::Result<Self> {
+        self.compare_num(rhs, f64::gt)
+    }
+
+    fn greater_eq(&self, rhs: &Self) -> miette::Result<Self> {
+        self.compare_num(rhs, f64::ge)
+    }
 }
 
-impl fmt::Debug for LiteralValue {
+impl fmt::Debug for LitVal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LiteralValue::String(string) => write!(f, "(String) {}", string),
-            LiteralValue::Num(n) => write!(f, "(Num) {}", n.clone()),
-            LiteralValue::Bool(b) => write!(f, "(bool) {}", if *b { "true" } else { "false" }),
-            LiteralValue::Nil => write!(f, "nil"),
+            LitVal::String(string) => write!(f, "(String) {}", string),
+            LitVal::Num(n) => write!(f, "(Num) {}", n.clone()),
+            LitVal::Bool(b) => write!(f, "(bool) {}", if *b { "true" } else { "false" }),
+            LitVal::Nil => write!(f, "nil"),
         }
     }
 }
 
-impl fmt::Display for LiteralValue {
+impl fmt::Display for LitVal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
-            LiteralValue::String(string) => String::from(string),
-            LiteralValue::Num(n) => n.clone().to_string(),
-            LiteralValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
-            LiteralValue::Nil => "nil".to_string(),
+            LitVal::String(string) => String::from(string),
+            LitVal::Num(n) => n.clone().to_string(),
+            LitVal::Bool(b) => if *b { "true" } else { "false" }.to_string(),
+            LitVal::Nil => "nil".to_string(),
         };
 
         write!(f, "{text}")
@@ -189,11 +240,11 @@ enum Expr {
         expr: Box<Expr>,
     },
     Grouping(Box<Expr>),
-    Literal(LiteralValue),
+    Literal(LitVal),
 }
 
 impl Expr {
-    fn evalute(&self) -> miette::Result<LiteralValue> {
+    fn evalute(&self) -> miette::Result<LitVal> {
         match self {
             Expr::Binary { left, op, right } => {
                 let left_literal = left.evalute()?;
@@ -236,7 +287,42 @@ where
     }
 
     pub fn expr(&mut self) -> miette::Result<Expr> {
-        self.term()
+        self.equality()
+    }
+
+    pub fn equality(&mut self) -> miette::Result<Expr> {
+        let left = self.comparison()?;
+        if let Some(token) = self.cursor.match_any(&[TokenKind::EqEq, TokenKind::BangEq]) {
+            let op = Op::try_from(&token.kind)?;
+            let right = Box::new(self.comparison()?);
+            return Ok(Expr::Binary {
+                left: Box::new(left),
+                op,
+                right,
+            });
+        }
+
+        Ok(left)
+    }
+
+    pub fn comparison(&mut self) -> miette::Result<Expr> {
+        let left = self.term()?;
+        if let Some(token) = self.cursor.match_any(&[
+            TokenKind::Less,
+            TokenKind::LessEq,
+            TokenKind::Greater,
+            TokenKind::GreaterEq,
+        ]) {
+            let op = Op::try_from(&token.kind)?;
+            let right = Box::new(self.term()?);
+            return Ok(Expr::Binary {
+                left: Box::new(left),
+                op,
+                right,
+            });
+        }
+
+        Ok(left)
     }
 
     pub fn term(&mut self) -> miette::Result<Expr> {
@@ -298,22 +384,22 @@ where
 
         if let TokenKind::Number(n) = token.kind {
             self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Num(n)));
+            return Ok(Expr::Literal(LitVal::Num(n)));
         }
 
         if let TokenKind::True = token.kind {
             self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Bool(true)));
+            return Ok(Expr::Literal(LitVal::Bool(true)));
         }
 
         if let TokenKind::False = token.kind {
             self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Bool(false)));
+            return Ok(Expr::Literal(LitVal::Bool(false)));
         }
 
         if let TokenKind::Nil = token.kind {
             self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Nil));
+            return Ok(Expr::Literal(LitVal::Nil));
         }
 
         if self.cursor.match_any(&[TokenKind::OpenParen]).is_some() {
@@ -326,7 +412,7 @@ where
     }
 }
 
-pub fn interpret(source_code: &str) -> miette::Result<LiteralValue> {
+pub fn interpret(source_code: &str) -> miette::Result<LitVal> {
     let tokens = tokenize(source_code);
     let mut parser = Parser::new(tokens);
     parser.expr()?.evalute()
@@ -335,9 +421,8 @@ pub fn interpret(source_code: &str) -> miette::Result<LiteralValue> {
 #[cfg(test)]
 mod tests {
 
-    use crate::lexer::tokenize;
-
     use super::*;
+    use crate::lexer::tokenize;
 
     #[test]
     fn test_parser_parse() {
@@ -353,7 +438,7 @@ mod tests {
 
     fn test_expr_evalute() {
         let literal = interpret("(5 - (3 - 1)) + -1").unwrap();
-        if let LiteralValue::Num(num) = literal {
+        if let LitVal::Num(num) = literal {
             assert_eq!(num, 2.0);
         }
     }

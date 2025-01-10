@@ -418,21 +418,11 @@ pub fn interpret(source_code: &str) -> miette::Result<LitVal> {
     parser.expr()?.evalute()
 }
 
-#[test]
-fn test_comparison() {
-    let literal = tokenize("3 >= 3");
-    for t in literal {
-        println!("{t}");
-    }
-    assert!(false);
-}
-
 #[cfg(test)]
 mod tests {
 
-    use crate::lexer::tokenize;
-
     use super::*;
+    use crate::lexer::tokenize;
 
     #[test]
     fn test_parser_parse() {

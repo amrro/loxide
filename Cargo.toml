@@ -2,7 +2,7 @@
 name = "loxide"
 version = "0.1.0"
 edition = "2021"
-author = ["Amr Elghobary <git@amrr.xyz>"]
+authors = ["Amr Elghobary <git@amrr.xyz>"]
 
 [dependencies]
 thiserror = "2.0.8"

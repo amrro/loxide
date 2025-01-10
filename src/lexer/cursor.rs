@@ -94,6 +94,24 @@ impl<'a> Cursor<'a> {
         }
     }
 
+    fn if_eq_else(&mut self, start: char, yes: TokenKind, no: TokenKind) -> Token {
+        let starting_offset = self.offset;
+        let mut lexeme = String::from(start);
+
+        while self.first().is_whitespace() {
+            lexeme.push(self.first());
+            self.advance();
+        }
+
+        if self.first() == '=' {
+            lexeme.push(self.first());
+            self.advance();
+            return Token::new(lexeme, yes, starting_offset);
+        }
+
+        Token::new(start.to_string(), no, starting_offset)
+    }
+
     pub(crate) fn advance_token(&mut self) -> Token {
         let ch = match self.advance() {
             Some(c) => c,
@@ -117,10 +135,10 @@ impl<'a> Cursor<'a> {
             '+' => Token::new(ch_str, TokenKind::Plus, self.offset),
             ';' => Token::new(ch_str, TokenKind::Semi, self.offset),
             '*' => Token::new(ch_str, TokenKind::Star, self.offset),
-            '<' => Token::new(ch_str, TokenKind::Less, self.offset),
-            '>' => Token::new(ch_str, TokenKind::Greater, self.offset),
-            '=' => Token::new(ch_str, TokenKind::Eq, self.offset),
-            '!' => Token::new(ch_str, TokenKind::Bang, self.offset),
+            '<' => self.if_eq_else(ch, TokenKind::LessEq, TokenKind::Less),
+            '>' => self.if_eq_else(ch, TokenKind::GreaterEq, TokenKind::Greater),
+            '=' => self.if_eq_else(ch, TokenKind::EqEq, TokenKind::Eq),
+            '!' => self.if_eq_else(ch, TokenKind::BangEq, TokenKind::Bang),
             '"' => self.string(),
             '/' => {
                 if self.is_match('/') {

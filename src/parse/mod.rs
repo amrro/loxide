@@ -35,7 +35,7 @@ impl Expr {
             Expr::Binary { left, op, right } => {
                 let left_literal = left.evalute()?;
                 let right_literal = right.evalute()?;
-                op.apply(right_literal, left_literal)
+                op.apply(left_literal, right_literal)
             }
             Expr::Unary { op, expr } => op.negate(expr.evalute()?),
             Expr::Grouping(expr) => expr.evalute(),

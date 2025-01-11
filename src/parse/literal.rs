@@ -18,7 +18,7 @@ impl LitVal {
             (LitVal::String(first), LitVal::String(second)) => {
                 Ok(LitVal::String(first.to_owned() + second))
             }
-            (LitVal::Num(n_lhs), LitVal::Num(n_rhs)) => Ok(LitVal::Num(*n_lhs + *n_rhs)),
+            (LitVal::Num(left), LitVal::Num(right)) => Ok(LitVal::Num(*left + *right)),
             _ => Err(RuntimeError::UnsupportedBinaryOp {
                 op: Op::Plus,
                 lhs: self.clone(),
@@ -30,7 +30,7 @@ impl LitVal {
 
     pub(crate) fn minus(&self, rhs: &Self) -> miette::Result<Self> {
         match (self, rhs) {
-            (LitVal::Num(n_rhs), LitVal::Num(n_lhs)) => Ok(LitVal::Num(*n_rhs - *n_lhs)),
+            (LitVal::Num(left), LitVal::Num(right)) => Ok(LitVal::Num(*left - *right)),
             _ => Err(RuntimeError::UnsupportedBinaryOp {
                 op: Op::Minus,
                 lhs: self.clone(),

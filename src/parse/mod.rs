@@ -1,181 +1,18 @@
 #![allow(dead_code)]
 pub mod errors;
 
+mod literal;
+mod op;
 mod token_cursor;
 
 use crate::{
     lexer::tokenize,
     token::{Token, TokenKind},
 };
-use errors::RuntimeError;
-use miette::IntoDiagnostic;
+use literal::LitVal;
+use op::Op;
 use std::fmt::{self};
 use token_cursor::TokenCursor;
-
-/// Operations
-#[derive(Clone, Copy)]
-pub enum Op {
-    Plus,
-    Minus,
-    Mul,
-    Divide,
-    Bang,
-}
-
-impl TryFrom<&TokenKind> for Op {
-    type Error = miette::Error;
-
-    fn try_from(kind: &TokenKind) -> miette::Result<Self> {
-        match kind {
-            TokenKind::Plus => Ok(Op::Plus),
-            TokenKind::Minus => Ok(Op::Minus),
-            TokenKind::Star => Ok(Op::Mul),
-            TokenKind::Bang => Ok(Op::Bang),
-            _ => Err(miette::miette!(
-                "Token type {:?} cannot be convert into operator.",
-                kind
-            )),
-        }
-    }
-}
-
-impl Op {
-    fn apply(&self, lhs: LiteralValue, rhs: LiteralValue) -> miette::Result<LiteralValue> {
-        match self {
-            Op::Plus => lhs.add(&rhs),
-            Op::Minus => lhs.minus(&rhs),
-            Op::Mul => lhs.mul(&rhs),
-            Op::Divide => lhs.div(&rhs),
-            _ => Err(RuntimeError::UnsupportedBinaryOp {
-                op: *self,
-                lhs: lhs.clone(),
-                rhs: rhs.clone(),
-            })
-            .into_diagnostic(),
-        }
-    }
-
-    fn negate(&self, value: LiteralValue) -> miette::Result<LiteralValue> {
-        match (self, value) {
-            (Op::Minus, LiteralValue::Num(num)) => Ok(LiteralValue::Num(-num)),
-            (Op::Bang, LiteralValue::Bool(flag)) => Ok(LiteralValue::Bool(!flag)),
-            (op, literal) => {
-                Err(RuntimeError::UnsupportedUnaryOp { op: *op, literal }).into_diagnostic()
-            }
-        }
-    }
-}
-
-impl fmt::Debug for Op {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Op::Plus => write!(f, "+"),
-            Op::Minus => write!(f, "-"),
-            Op::Mul => write!(f, "*"),
-            Op::Divide => write!(f, "/"),
-            Op::Bang => write!(f, "!"),
-        }
-    }
-}
-
-impl fmt::Display for Op {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-#[derive(Clone)]
-pub enum LiteralValue {
-    String(String),
-    Num(f64),
-    Bool(bool),
-    Nil,
-}
-
-impl LiteralValue {
-    fn add(&self, rhs: &Self) -> miette::Result<Self> {
-        match (self, rhs) {
-            (LiteralValue::String(first), LiteralValue::String(second)) => {
-                Ok(LiteralValue::String(first.to_owned() + second))
-            }
-            (LiteralValue::Num(n_lhs), LiteralValue::Num(n_rhs)) => {
-                Ok(LiteralValue::Num(*n_lhs + *n_rhs))
-            }
-            _ => Err(RuntimeError::UnsupportedBinaryOp {
-                op: Op::Plus,
-                lhs: self.clone(),
-                rhs: rhs.clone(),
-            })
-            .into_diagnostic(),
-        }
-    }
-
-    fn minus(&self, rhs: &Self) -> miette::Result<Self> {
-        match (self, rhs) {
-            (LiteralValue::Num(n_rhs), LiteralValue::Num(n_lhs)) => {
-                Ok(LiteralValue::Num(*n_rhs - *n_lhs))
-            }
-            _ => Err(RuntimeError::UnsupportedBinaryOp {
-                op: Op::Minus,
-                lhs: self.clone(),
-                rhs: rhs.clone(),
-            })
-            .into_diagnostic(),
-        }
-    }
-
-    fn mul(&self, rhs: &Self) -> miette::Result<Self> {
-        match (self, rhs) {
-            (LiteralValue::Num(left), LiteralValue::Num(right)) => {
-                Ok(LiteralValue::Num(left * right))
-            }
-            _ => Err(RuntimeError::UnsupportedBinaryOp {
-                op: Op::Mul,
-                lhs: self.clone(),
-                rhs: rhs.clone(),
-            })
-            .into_diagnostic(),
-        }
-    }
-
-    fn div(&self, rhs: &Self) -> miette::Result<Self> {
-        match (self, rhs) {
-            (LiteralValue::Num(left), LiteralValue::Num(right)) => {
-                Ok(LiteralValue::Num(left / right))
-            }
-            _ => Err(RuntimeError::UnsupportedBinaryOp {
-                op: Op::Divide,
-                lhs: self.clone(),
-                rhs: rhs.clone(),
-            })
-            .into_diagnostic(),
-        }
-    }
-}
-
-impl fmt::Debug for LiteralValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LiteralValue::String(string) => write!(f, "(String) {}", string),
-            LiteralValue::Num(n) => write!(f, "(Num) {}", n.clone()),
-            LiteralValue::Bool(b) => write!(f, "(bool) {}", if *b { "true" } else { "false" }),
-            LiteralValue::Nil => write!(f, "nil"),
-        }
-    }
-}
-
-impl fmt::Display for LiteralValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let text = match self {
-            LiteralValue::String(string) => String::from(string),
-            LiteralValue::Num(n) => n.clone().to_string(),
-            LiteralValue::Bool(b) => if *b { "true" } else { "false" }.to_string(),
-            LiteralValue::Nil => "nil".to_string(),
-        };
-
-        write!(f, "{text}")
-    }
-}
 
 enum Expr {
     Binary {
@@ -301,19 +138,16 @@ where
             return Ok(Expr::Literal(LiteralValue::Num(n)));
         }
 
-        if let TokenKind::True = token.kind {
-            self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Bool(true)));
+        if self.cursor.match_any(&[TokenKind::True]).is_some() {
+            return Ok(Expr::Literal(LitVal::Bool(true)));
         }
 
-        if let TokenKind::False = token.kind {
-            self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Bool(false)));
+        if self.cursor.match_any(&[TokenKind::False]).is_some() {
+            return Ok(Expr::Literal(LitVal::Bool(false)));
         }
 
-        if let TokenKind::Nil = token.kind {
-            self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Nil));
+        if self.cursor.match_any(&[TokenKind::Nil]).is_some() {
+            return Ok(Expr::Literal(LitVal::Nil));
         }
 
         if self.cursor.match_any(&[TokenKind::OpenParen]).is_some() {

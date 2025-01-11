@@ -26,11 +26,11 @@ enum Expr {
         expr: Box<Expr>,
     },
     Grouping(Box<Expr>),
-    Literal(LiteralValue),
+    Literal(LitVal),
 }
 
 impl Expr {
-    fn evalute(&self) -> miette::Result<LiteralValue> {
+    fn evalute(&self) -> miette::Result<LitVal> {
         match self {
             Expr::Binary { left, op, right } => {
                 let left_literal = left.evalute()?;
@@ -73,7 +73,42 @@ where
     }
 
     pub fn expr(&mut self) -> miette::Result<Expr> {
-        self.term()
+        self.equality()
+    }
+
+    pub fn equality(&mut self) -> miette::Result<Expr> {
+        let left = self.comparison()?;
+        if let Some(token) = self.cursor.match_any(&[TokenKind::EqEq, TokenKind::BangEq]) {
+            let op = Op::try_from(&token.kind)?;
+            let right = Box::new(self.comparison()?);
+            return Ok(Expr::Binary {
+                left: Box::new(left),
+                op,
+                right,
+            });
+        }
+
+        Ok(left)
+    }
+
+    pub fn comparison(&mut self) -> miette::Result<Expr> {
+        let left = self.term()?;
+        if let Some(token) = self.cursor.match_any(&[
+            TokenKind::Less,
+            TokenKind::LessEq,
+            TokenKind::Greater,
+            TokenKind::GreaterEq,
+        ]) {
+            let op = Op::try_from(&token.kind)?;
+            let right = Box::new(self.term()?);
+            return Ok(Expr::Binary {
+                left: Box::new(left),
+                op,
+                right,
+            });
+        }
+
+        Ok(left)
     }
 
     pub fn term(&mut self) -> miette::Result<Expr> {
@@ -135,7 +170,7 @@ where
 
         if let TokenKind::Number(n) = token.kind {
             self.cursor.advance();
-            return Ok(Expr::Literal(LiteralValue::Num(n)));
+            return Ok(Expr::Literal(LitVal::Num(n)));
         }
 
         if self.cursor.match_any(&[TokenKind::True]).is_some() {
@@ -160,7 +195,7 @@ where
     }
 }
 
-pub fn interpret(source_code: &str) -> miette::Result<LiteralValue> {
+pub fn interpret(source_code: &str) -> miette::Result<LitVal> {
     let tokens = tokenize(source_code);
     let mut parser = Parser::new(tokens);
     parser.expr()?.evalute()
@@ -169,9 +204,8 @@ pub fn interpret(source_code: &str) -> miette::Result<LiteralValue> {
 #[cfg(test)]
 mod tests {
 
-    use crate::lexer::tokenize;
-
     use super::*;
+    use crate::lexer::tokenize;
 
     #[test]
     fn test_parser_parse() {
@@ -187,7 +221,7 @@ mod tests {
 
     fn test_expr_evalute() {
         let literal = interpret("(5 - (3 - 1)) + -1").unwrap();
-        if let LiteralValue::Num(num) = literal {
+        if let LitVal::Num(num) = literal {
             assert_eq!(num, 2.0);
         }
     }

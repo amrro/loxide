@@ -30,6 +30,7 @@ impl TryFrom<&TokenKind> for Op {
             TokenKind::Plus => Ok(Op::Plus),
             TokenKind::Minus => Ok(Op::Minus),
             TokenKind::Star => Ok(Op::Mul),
+            TokenKind::Slash => Ok(Op::Divide),
             TokenKind::Bang => Ok(Op::Bang),
             TokenKind::EqEq => Ok(Op::EqEq),
             TokenKind::BangEq => Ok(Op::BangEq),

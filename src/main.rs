@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use clap::{command, Parser, Subcommand};
-use loxide::{interpret, lexer::tokenize};
+use loxide::{lexer::tokenize, parse::parse};
 use miette::{Context, IntoDiagnostic};
 
 use std::{
@@ -74,8 +74,8 @@ fn run_repl() {
             break;
         }
 
-        match interpret(trimmed_input) {
-            Ok(literal) => println!("{literal}\n"),
+        match parse(trimmed_input) {
+            Ok(()) => {}
             Err(e) => eprintln!("Error: {e}"),
         }
     }

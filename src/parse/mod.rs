@@ -78,7 +78,7 @@ where
     pub fn parse(&mut self) -> miette::Result<Vec<Stmt>> {
         let mut stmts = Vec::new();
 
-        while self.cursor.at_end() {
+        while !self.cursor.at_end() {
             stmts.push(self.advance_stmt()?);
         }
         Ok(stmts)
@@ -225,6 +225,16 @@ pub fn interpret(source_code: &str) -> miette::Result<LitVal> {
     parser.expr()?.evalute()
 }
 
+pub fn parse(source_code: &str) -> miette::Result<()> {
+    let tokens = tokenize(source_code);
+    let mut parser = Parser::new(tokens);
+    let stmts = parser.parse()?;
+
+    Stmt::execute(&stmts)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -258,5 +268,11 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let stmts = parser.parse().unwrap();
         assert_eq!(stmts, vec![]);
+    }
+
+    #[test]
+    fn test_stmt_execute() {
+        let source_code = "print 5; 2 + 3;";
+        parse(source_code).unwrap();
     }
 }

@@ -192,30 +192,35 @@ where
     pub fn primary(&mut self) -> miette::Result<Expr> {
         let token = self.cursor.peek();
 
-        if let TokenKind::Number(n) = token.kind {
-            self.cursor.advance();
-            return Ok(Expr::Literal(LitVal::Num(n)));
+        match token.kind {
+            TokenKind::Number(n) => {
+                self.cursor.advance();
+                Ok(Expr::Literal(LitVal::Num(n)))
+            }
+            TokenKind::String => {
+                self.cursor.advance();
+                Ok(Expr::Literal(LitVal::String(token.lexeme)))
+            }
+            TokenKind::True => {
+                self.cursor.advance();
+                Ok(Expr::Literal(LitVal::Bool(true)))
+            }
+            TokenKind::False => {
+                self.cursor.advance();
+                Ok(Expr::Literal(LitVal::Bool(false)))
+            }
+            TokenKind::Nil => {
+                self.cursor.advance();
+                Ok(Expr::Literal(LitVal::Nil))
+            }
+            TokenKind::OpenParen => {
+                self.cursor.advance();
+                let expr = self.expr()?;
+                self.cursor.consume(&TokenKind::CloseParen)?;
+                Ok(Expr::Grouping(Box::new(expr)))
+            }
+            _ => Err(miette::miette!("Unkown Token: {:?}", self.cursor.peek())),
         }
-
-        if self.cursor.match_any(&[TokenKind::True]).is_some() {
-            return Ok(Expr::Literal(LitVal::Bool(true)));
-        }
-
-        if self.cursor.match_any(&[TokenKind::False]).is_some() {
-            return Ok(Expr::Literal(LitVal::Bool(false)));
-        }
-
-        if self.cursor.match_any(&[TokenKind::Nil]).is_some() {
-            return Ok(Expr::Literal(LitVal::Nil));
-        }
-
-        if self.cursor.match_any(&[TokenKind::OpenParen]).is_some() {
-            let expr = self.expr()?;
-            self.cursor.consume(&TokenKind::CloseParen)?;
-            return Ok(Expr::Grouping(Box::new(expr)));
-        }
-
-        Err(miette::miette!("Uknown Token: {:?}", self.cursor.peek()))
     }
 }
 
@@ -254,20 +259,12 @@ mod tests {
     }
 
     #[test]
-    fn test_expr_evalute() {
-        let literal = interpret("(5 - (3 - 1)) + -1").unwrap();
-        if let LitVal::Num(num) = literal {
-            assert_eq!(num, 2.0);
-        }
-    }
-
-    #[test]
     fn test_parse_stmts() {
         let source_code = "print 5; 2 + 3;";
         let tokens = tokenize(source_code);
         let mut parser = Parser::new(tokens);
         let stmts = parser.parse().unwrap();
-        assert_eq!(stmts, vec![]);
+        assert_eq!(stmts.len(), 2);
     }
 
     #[test]

@@ -2,6 +2,8 @@ use std::iter::Peekable;
 
 use crate::token::{Token, TokenKind};
 
+const EOF_CHAR: char = '\0';
+
 #[derive(Clone)]
 pub struct TokenCursor<I>
 where
@@ -50,6 +52,10 @@ where
         }
 
         None
+    }
+
+    pub(crate) fn at_end(&mut self) -> bool {
+        self.peek().lexeme == EOF_CHAR.to_string()
     }
 }
 

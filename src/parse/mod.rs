@@ -3,6 +3,7 @@ pub mod errors;
 
 mod literal;
 mod op;
+pub mod stmt;
 mod token_cursor;
 
 use crate::{
@@ -12,9 +13,11 @@ use crate::{
 use literal::LitVal;
 use op::Op;
 use std::fmt::{self};
+use stmt::Stmt;
 use token_cursor::TokenCursor;
 
-enum Expr {
+#[derive(Debug, PartialEq)]
+pub(crate) enum Expr {
     Binary {
         left: Box<Expr>,
         op: Op,
@@ -70,6 +73,27 @@ where
         Self {
             cursor: TokenCursor::new(tokens),
         }
+    }
+
+    pub fn parse(&mut self) -> miette::Result<Vec<Stmt>> {
+        let mut stmts = Vec::new();
+
+        while !self.cursor.at_end() {
+            stmts.push(self.advance_stmt()?);
+        }
+        Ok(stmts)
+    }
+
+    pub fn advance_stmt(&mut self) -> miette::Result<Stmt> {
+        if self.cursor.match_any(&[TokenKind::Print]).is_some() {
+            let expr = self.expr()?;
+            self.cursor.consume(&TokenKind::Semi)?;
+            return Ok(Stmt::Print(expr));
+        }
+
+        let expr = self.expr()?;
+        self.cursor.consume(&TokenKind::Semi)?;
+        Ok(Stmt::Expr(expr))
     }
 
     pub fn expr(&mut self) -> miette::Result<Expr> {
@@ -166,32 +190,21 @@ where
     }
 
     pub fn primary(&mut self) -> miette::Result<Expr> {
-        let token = self.cursor.peek();
+        let token = self.cursor.advance().unwrap();
 
-        if let TokenKind::Number(n) = token.kind {
-            self.cursor.advance();
-            return Ok(Expr::Literal(LitVal::Num(n)));
+        match token.kind {
+            TokenKind::Number(n) => Ok(Expr::Literal(LitVal::Num(n))),
+            TokenKind::String => Ok(Expr::Literal(LitVal::String(token.lexeme))),
+            TokenKind::True => Ok(Expr::Literal(LitVal::Bool(true))),
+            TokenKind::False => Ok(Expr::Literal(LitVal::Bool(false))),
+            TokenKind::Nil => Ok(Expr::Literal(LitVal::Nil)),
+            TokenKind::OpenParen => {
+                let expr = self.expr()?;
+                self.cursor.consume(&TokenKind::CloseParen)?;
+                Ok(Expr::Grouping(Box::new(expr)))
+            }
+            _ => Err(miette::miette!("Unkown Token: {:?}", self.cursor.peek())),
         }
-
-        if self.cursor.match_any(&[TokenKind::True]).is_some() {
-            return Ok(Expr::Literal(LitVal::Bool(true)));
-        }
-
-        if self.cursor.match_any(&[TokenKind::False]).is_some() {
-            return Ok(Expr::Literal(LitVal::Bool(false)));
-        }
-
-        if self.cursor.match_any(&[TokenKind::Nil]).is_some() {
-            return Ok(Expr::Literal(LitVal::Nil));
-        }
-
-        if self.cursor.match_any(&[TokenKind::OpenParen]).is_some() {
-            let expr = self.expr()?;
-            self.cursor.consume(&TokenKind::CloseParen)?;
-            return Ok(Expr::Grouping(Box::new(expr)));
-        }
-
-        Err(miette::miette!("Uknown Token: {:?}", self.cursor.peek()))
     }
 }
 
@@ -199,6 +212,16 @@ pub fn interpret(source_code: &str) -> miette::Result<LitVal> {
     let tokens = tokenize(source_code);
     let mut parser = Parser::new(tokens);
     parser.expr()?.evalute()
+}
+
+pub fn parse(source_code: &str) -> miette::Result<()> {
+    let tokens = tokenize(source_code);
+    let mut parser = Parser::new(tokens);
+    let stmts = parser.parse()?;
+
+    Stmt::execute(&stmts)?;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -219,10 +242,18 @@ mod tests {
         assert_eq!(expr.to_string(), expected);
     }
 
-    fn test_expr_evalute() {
-        let literal = interpret("(5 - (3 - 1)) + -1").unwrap();
-        if let LitVal::Num(num) = literal {
-            assert_eq!(num, 2.0);
-        }
+    #[test]
+    fn test_parse_stmts() {
+        let source_code = "print 5; 2 + 3;";
+        let tokens = tokenize(source_code);
+        let mut parser = Parser::new(tokens);
+        let stmts = parser.parse().unwrap();
+        assert_eq!(stmts.len(), 2);
+    }
+
+    #[test]
+    fn test_stmt_execute() {
+        let source_code = "print 5; 2 + 3;";
+        parse(source_code).unwrap();
     }
 }

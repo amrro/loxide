@@ -190,31 +190,15 @@ where
     }
 
     pub fn primary(&mut self) -> miette::Result<Expr> {
-        let token = self.cursor.peek();
+        let token = self.cursor.advance().unwrap();
 
         match token.kind {
-            TokenKind::Number(n) => {
-                self.cursor.advance();
-                Ok(Expr::Literal(LitVal::Num(n)))
-            }
-            TokenKind::String => {
-                self.cursor.advance();
-                Ok(Expr::Literal(LitVal::String(token.lexeme)))
-            }
-            TokenKind::True => {
-                self.cursor.advance();
-                Ok(Expr::Literal(LitVal::Bool(true)))
-            }
-            TokenKind::False => {
-                self.cursor.advance();
-                Ok(Expr::Literal(LitVal::Bool(false)))
-            }
-            TokenKind::Nil => {
-                self.cursor.advance();
-                Ok(Expr::Literal(LitVal::Nil))
-            }
+            TokenKind::Number(n) => Ok(Expr::Literal(LitVal::Num(n))),
+            TokenKind::String => Ok(Expr::Literal(LitVal::String(token.lexeme))),
+            TokenKind::True => Ok(Expr::Literal(LitVal::Bool(true))),
+            TokenKind::False => Ok(Expr::Literal(LitVal::Bool(false))),
+            TokenKind::Nil => Ok(Expr::Literal(LitVal::Nil)),
             TokenKind::OpenParen => {
-                self.cursor.advance();
                 let expr = self.expr()?;
                 self.cursor.consume(&TokenKind::CloseParen)?;
                 Ok(Expr::Grouping(Box::new(expr)))
